@@ -41,7 +41,7 @@ export CF_VERSION=3.6.0
 
 # Used in: make/stratos/...
 
-: "${STRATOS_URL:=https://github.com/cloudfoundry-incubator/stratos/releases/download/2.1.1/console-helm-chart-2.1.1-74090ba.tgz}"
+: "${STRATOS_METRICS_URL:=https://github.com/SUSE/stratos-metrics/releases/download/1.0.0/console-metrics-helm-chart-v1.0.0-ddbf0c5.tgz}"
 
 # Show versions, if called on its own.
 # # ## ### ##### ######## ############# #####################

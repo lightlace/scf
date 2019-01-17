@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+set -o errexit -o nounset
+
+: "${GIT_ROOT:=$(git rev-parse --show-toplevel)}"
+source "${GIT_ROOT}/bin/common/versions.sh"
+source "${GIT_ROOT}/make/include/defaults"
+source "${GIT_ROOT}/make/include/has_release"
+
+# tmp_stratos_metrics="/tmp/stratos/metrics"
+# mkdir -p $tmp_stratos_metrics
+# stratos_metrics_installer="${tmp_stratos_metrics}/installer.tgz"
+# chart="${tmp_stratos_metrics}/metrics/"
+# download_log="${tmp_stratos_metrics}/download.log"
+# printf "Downloading Stratos Metrics release to %s... " "${tmp_stratos_metrics}"
+# curl -L -o $stratos_metrics_installer "$STRATOS_METRICS_URL" >/dev/null 2>$download_log
+# tar zxf $stratos_metrics_installer -C $tmp_stratos_metrics
+# printf "ok\\n"
+
+if ! has_release "${STRATOS_METRICS_HELM_RELEASE}"; then
+  subcommand="install"
+
+  args=(
+    # "${chart}"
+    suse/metrics
+    --name "${STRATOS_METRICS_HELM_RELEASE}"
+    --namespace "${STRATOS_NAMESPACE}"
+  )
+else
+  subcommand="upgrade"
+
+  args=(
+    "${STRATOS_METRICS_HELM_RELEASE}"
+    # "${chart}"
+    suse/metrics
+  )
+fi
+
+uaa_admin_client_secret=$(kubectl get secrets \
+  --namespace uaa \
+  secrets \
+  -o jsonpath='{.data.uaa-admin-client-secret}' | base64 --decode)
+
+values=(
+  --set "env.UAA_HOST=${UAA_HOST}"
+  --set "env.UAA_PORT=${UAA_PORT}"
+  --set "env.UAA_CF_IDENTITY_ZONE=${UAA_CF_IDENTITY_ZONE}"
+  --set "firehoseExporter.dopplerUrl=wss://${DOPPLER_HOST}:${DOPPLER_PORT}"
+  --set "firehoseExporter.uaa.admin.clientSecret=${uaa_admin_client_secret}"
+  --set "secrets.UAA_ADMIN_CLIENT_SECRET=${uaa_admin_client_secret}"
+  --set "metrics.externalIP=${VAGRANT_EXTERNAL_IP}"
+  --set "nginx.externalPort=${STRATOS_METRICS_EXTERNAL_PORT}"
+  --set "kubernetes.authEndpoint=http://${DOMAIN}:8080"
+  --set "prometheus.kubeStateMetrics.enabled=true"
+)
+
+set -x
+helm "${subcommand}" "${args[@]}" "${values[@]}"
